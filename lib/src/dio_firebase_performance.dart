@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+// ignore: import_of_legacy_library_into_null_safe
 import 'package:firebase_performance/firebase_performance.dart';
 
 /// [Dio] client interceptor that hooks into request/response process
@@ -26,7 +27,7 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
   Future onRequest(RequestOptions options) async {
     try {
       final metric = FirebasePerformance.instance.newHttpMetric(
-          options.uri.normalized(), options.method.asHttpMethod());
+          options.uri.normalized(), options.method.asHttpMethod()!);
 
       final requestKey = options.extra.hashCode;
       _map[requestKey] = metric;
@@ -43,7 +44,7 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
   Future onResponse(Response response) async {
     try {
       final requestKey = response.request.extra.hashCode;
-      final metric = _map[requestKey];
+      final metric = _map[requestKey]!;
       metric.setResponse(response, responseContentLengthMethod);
       await metric.stop();
       _map.remove(requestKey);
@@ -54,8 +55,8 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
   @override
   Future onError(DioError err) async {
     try {
-      final requestKey = err.request.extra.hashCode;
-      final metric = _map[requestKey];
+      final requestKey = err.request!.extra.hashCode;
+      final metric = _map[requestKey]!;
       metric.setResponse(err.response, responseContentLengthMethod);
       await metric.stop();
       _map.remove(requestKey);
@@ -64,12 +65,12 @@ class DioFirebasePerformanceInterceptor extends Interceptor {
   }
 }
 
-typedef RequestContentLengthMethod = int Function(RequestOptions options);
-int defaultRequestContentLength(RequestOptions options) {
+typedef RequestContentLengthMethod = int? Function(RequestOptions options);
+int? defaultRequestContentLength(RequestOptions options) {
   try {
     if (options.data is String || options.data is Map) {
       return options.headers.toString().length +
-          (options.data?.toString()?.length ?? 0);
+          (options.data?.toString().length ?? 0);
     }
   } catch (_) {
     return null;
@@ -77,18 +78,18 @@ int defaultRequestContentLength(RequestOptions options) {
   return null;
 }
 
-typedef ResponseContentLengthMethod = int Function(Response options);
-int defaultResponseContentLength(Response response) {
+typedef ResponseContentLengthMethod = int? Function(Response options);
+int? defaultResponseContentLength(Response response) {
   if (response.data is String) {
-    return (response?.headers?.toString()?.length ?? 0) + response.data.length;
+    return (response.headers.toString().length) + response.data.length as int?;
   } else {
     return null;
   }
 }
 
 extension _ResponseHttpMetric on HttpMetric {
-  void setResponse(
-      Response value, ResponseContentLengthMethod responseContentLengthMethod) {
+  void setResponse(Response? value,
+      ResponseContentLengthMethod responseContentLengthMethod) {
     if (value == null) {
       return;
     }
@@ -96,12 +97,12 @@ extension _ResponseHttpMetric on HttpMetric {
     if (responseContentLength != null) {
       responsePayloadSize = responseContentLength;
     }
-    final contentType = value?.headers?.value?.call(Headers.contentTypeHeader);
+    final contentType = value.headers.value.call(Headers.contentTypeHeader);
     if (contentType != null) {
       responseContentType = contentType;
     }
     if (value.statusCode != null) {
-      httpResponseCode = value.statusCode;
+      httpResponseCode = value.statusCode!;
     }
   }
 }
@@ -113,11 +114,7 @@ extension _UriHttpMethod on Uri {
 }
 
 extension _StringHttpMethod on String {
-  HttpMethod asHttpMethod() {
-    if (this == null) {
-      return null;
-    }
-
+  HttpMethod? asHttpMethod() {
     switch (toUpperCase()) {
       case "POST":
         return HttpMethod.Post;
